@@ -8,13 +8,33 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tkinter import Frame,Label,Tk,Button,PhotoImage,messagebox,CENTER,TOP,BOTTOM,X,FLAT,SOLID
 from PIL import ImageTk,Image
+import pyttsx3
+from threading import Thread
 
 from imutils import face_utils
 
+counter = 0
+
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor(r"C:\Users\JitChow\Documents\GitHub\FYP2\Shared\shape_predictor_68_face_landmarks.dat")
-model_eye = tf.keras.models.load_model(r'C:\Users\JitChow\Documents\GitHub\FYP2\Eye Detection Codes\models\EyeGray Acc - 0.914 Loss - 0.266.h5')
-model_yawn = tf.keras.models.load_model(r"C:\Users\JitChow\Documents\GitHub\FYP2\Yawn Detection Codes\models\YawnGray Acc - 0.957 Loss - 0.117.h5") 
+predictor = dlib.shape_predictor(r"Shared\shape_predictor_68_face_landmarks.dat")
+model_eye = tf.keras.models.load_model(r'Eye Detection Codes\models\EyeGray Acc - 0.914 Loss - 0.266.h5')
+model_yawn = tf.keras.models.load_model(r"Yawn Detection Codes\models\YawnGray Acc - 0.957 Loss - 0.117.h5") 
+
+def mute_music():
+    global muted
+    
+    if muted:
+        btn_volume.configure(image=volume_photo)
+        muted=False
+    else:
+        btn_volume.configure(image=mute_photo)
+        muted=True
+
+def play_warning():
+    engine.say("WAKE UP.")
+
+    engine.runAndWait()
+    engine.stop()
 
 def crop_eye_dlib(img):
     IMG_SIZE = 50
@@ -85,6 +105,7 @@ def predictYawn(roi):
     return 1
 
 def display_video():
+    global counter
     ret, frame = vid.read()
     text_eye = 'N/A'
     text_yawn = 'N/A'
@@ -108,6 +129,13 @@ def display_video():
             text_yawn = 'no yawn'
         else:
             text_yawn = 'yawn'
+            
+        if pred_eye == 0 or pred_yawn == 1:
+            counter += 1
+            if counter > 3:
+                play_warning()
+        else:
+            counter = 0
 
     cv2.putText(frame, 'eye status = '+text_eye, (0, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
     cv2.putText(frame, 'yawn status = '+text_yawn, (0, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
@@ -133,6 +161,8 @@ else:
     font = ("bahnschrift",12)
     title_font = ("bahnschrift",20,"bold")
     
+    engine = pyttsx3.init()
+    th = Thread(target=play_warning, args=[''],daemon = True)
     # prepare root window
     root = Tk()
     root.title('Driver Drowsiness Detector')
@@ -160,55 +190,15 @@ else:
     webcam_label = Label(main_frame)
     webcam_label.pack()
 
+    # volumn button
+    mute_photo = PhotoImage(file=r"Shared\Icons\mute.png")
+    volume_photo = PhotoImage(file=r"Shared\Icons\unmute.png")
+    btn_volume = Button(buttom_frame, image=volume_photo, relief=FLAT, overrelief=SOLID, cursor="hand2", command=mute_music)
+    btn_volume.grid(row=0,column=1,padx=20)
+
     display_video()
 
     # place window at center when opening
     root.eval('tk::PlaceWindow . center')
 
     root.mainloop()
-# =============================================================================
-#     counter = 0
-#     text_eye = 'N/A'
-#     text_yawn = 'N/A'
-#     while(True):
-#         
-#         ret, frame = vid.read()
-#         
-#         if counter == 30:
-#             counter = 0
-#             
-#             faces_eye, roi_eye = crop_eye_dlib(frame)
-#             faces_yawn, roi_yawn = crop_mouth_yawn_dlib(frame)
-#     
-#             #check if dlib detects any faces
-#             if (faces_eye <= 0 or faces_yawn <= 0):
-#                 text_eye = 'N/A'
-#                 text_yawn = 'N/A'
-#             else:
-#                 pred_eye =  predictEyes(roi_eye)
-#                 pred_yawn =  predictYawn(roi_yawn)
-#     
-#                 if pred_eye == 0:
-#                     text_eye = 'closed'
-#                 else:
-#                     text_eye = 'open'
-#     
-#                 if pred_yawn == 0:
-#                     text_yawn = 'no yawn'
-#                 else:
-#                     text_yawn = 'yawn'
-#         else:        
-#             counter += 1
-#     
-#         cv2.putText(frame, 'eye status = '+text_eye, (0, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
-#         cv2.putText(frame, 'yawn status = '+text_yawn, (0, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
-#         cv2.imshow('frame', frame)
-#           
-#         if cv2.waitKey(1) & 0xFF == ord('q'):
-#             break
-#     
-#     
-#     vid.release()
-#     # Destroy all the windows
-#     cv2.destroyAllWindows()
-# =============================================================================
