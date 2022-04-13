@@ -17,6 +17,7 @@ from email.message import EmailMessage
 from imutils import face_utils
 
 counter = 0
+counter_noti = 0
 SENDER_EMAIL = 'fypdriverdrowsiness@gmail.com'
 SENDER_PASSWORD = 'FYPdriverdrowsiness'
 
@@ -141,6 +142,7 @@ def display_video():
     global th
     global th2
     global counter
+    global counter_noti
     ret, frame = vid.read()
     text_eye = 'N/A'
     text_yawn = 'N/A'
@@ -169,11 +171,15 @@ def display_video():
             counter += 1
             if counter > 3:
                 if not th.is_alive() and not muted:
+                    counter_noti += 1
                     th = Thread(target=play_warning, daemon = True)
                     th.start()
-                if not th2.is_alive():
-                    th2 = Thread(target=send_email, args=[frame], daemon = True)
-                    th2.start()
+                
+                if counter_noti > 3: 
+                    if not th2.is_alive():
+                        counter_noti = 0
+                        th2 = Thread(target=send_email, args=[frame], daemon = True)
+                        th2.start()
                 
         else:
             counter = 0
